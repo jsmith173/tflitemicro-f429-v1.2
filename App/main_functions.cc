@@ -12,6 +12,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+#define USE_FLOAT
 
 #include "main_functions.h"
 #include "main.h"
@@ -19,12 +20,17 @@ limitations under the License.
 
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "constants.h"
-#include "mnist_model_data.h"
 #include "output_handler.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
+
+#ifdef USE_FLOAT
+ #include "mnist_model_float_data.h"
+#else
+ #include "mnist_model_uint8_data.h"
+#endif
 
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
@@ -51,7 +57,11 @@ void ai_setup() {
 
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
-  model = tflite::GetModel(g_mnist_model_data);
+  #ifdef USE_FLOAT
+  model = tflite::GetModel(g_mnist_float_model_data);
+  #else
+  model = tflite::GetModel(g_mnist_uint8_model_data);
+  #endif
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     TF_LITE_REPORT_ERROR(error_reporter,
                          "Model provided is schema version %d not equal "
@@ -97,7 +107,6 @@ void ai_loop() {
   int N = dim_w*dim_h;
   
   float* input_data = tflite::GetTensorData<float>(input);
-  float* output_data = tflite::GetTensorData<float>(output);
 
   // Copy the buffer to input tensor
   for (int i = 0; i < N; i++) {
@@ -123,6 +132,7 @@ void ai_loop() {
   unsigned char v_uint8 = 0;
   for (uint32_t i = 0; i < num_classes; i++) {
    if (output->type == kTfLiteFloat32) { 
+       float* output_data = tflite::GetTensorData<float>(output);
        for (int i = 0; i < num_classes; i++) {
          vi = output_data[i];
          if (vi > v){
