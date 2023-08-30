@@ -14,10 +14,12 @@ limitations under the License.
 ==============================================================================*/
 
 #include "main_functions.h"
+#include "main.h"
+#include "img_array.h"
 
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "constants.h"
-#include "hello_world_model_data.h"
+#include "mnist_model_data.h"
 #include "output_handler.h"
 #include "tensorflow/lite/micro/micro_error_reporter.h"
 #include "tensorflow/lite/micro/micro_interpreter.h"
@@ -33,7 +35,7 @@ TfLiteTensor* input = nullptr;
 TfLiteTensor* output = nullptr;
 int inference_count = 0;
 
-constexpr int kTensorArenaSize = 40*1024;
+constexpr int kTensorArenaSize = 140*1024;
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
@@ -49,7 +51,7 @@ void ai_setup() {
 
   // Map the model into a usable data structure. This doesn't involve any
   // copying or parsing, it's a very lightweight operation.
-  model = tflite::GetModel(g_hello_world_model_data);
+  model = tflite::GetModel(g_mnist_model_data);
   if (model->version() != TFLITE_SCHEMA_VERSION) {
     TF_LITE_REPORT_ERROR(error_reporter,
                          "Model provided is schema version %d not equal "
@@ -80,40 +82,64 @@ void ai_setup() {
 
   // Keep track of how many inferences we have performed.
   inference_count = 0;
+  
+  // ai_setup end: Blue LED
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);   
 }
 
 // The name of this function is important for Arduino compatibility.
 void ai_loop() {
-  // Calculate an x value to feed into the model. We compare the current
-  // inference_count to the number of inferences per cycle to determine
-  // our position within the range of possible x values the model was
-  // trained on, and use this to calculate a value.
-  float position = static_cast<float>(inference_count) /
-                   static_cast<float>(kInferencesPerCycle);
-  float x = position * kXrange;
+  int tensor_size = input->bytes;
+  int dim_size = input->dims->size;
+  int dim_1 = input->dims->data[0];
+  int dim_h = input->dims->data[1];
+  int dim_w = input->dims->data[2];
+  int N = dim_w*dim_h;
+  
+  float* input_data = tflite::GetTensorData<float>(input);
+  float* output_data = tflite::GetTensorData<float>(output);
 
-  // Quantize the input from floating-point to integer
-  int8_t x_quantized = x / input->params.scale + input->params.zero_point;
-  // Place the quantized input in the model's input tensor
-  input->data.int8[0] = x_quantized;
+  // Copy the buffer to input tensor
+  for (int i = 0; i < N; i++) {
+    input_data[i] = img_array1[i];
+  }
 
   // Run inference, and report any error
   TfLiteStatus invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk) {
-    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on x: %f\n",
-                         static_cast<double>(x));
+    TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on x: %f\n");
     return;
   }
 
-  // Obtain the quantized output from model's output tensor
-  int8_t y_quantized = output->data.int8[0];
-  // Dequantize the output from integer to floating-point
-  float y = (y_quantized - output->params.zero_point) * output->params.scale;
+  // Get output and ArgMax
+  int size = output->bytes; 
+  int div_size = 1;
+  if (output->type == kTfLiteFloat32)
+    div_size = sizeof(float);
+  int num_classes = size/div_size;
+  
+  int idx = 0;
+  float vi, v = 0.0f;
+  unsigned char v_uint8 = 0;
+  for (uint32_t i = 0; i < num_classes; i++) {
+   if (output->type == kTfLiteFloat32) { 
+       for (int i = 0; i < num_classes; i++) {
+         vi = output_data[i];
+         if (vi > v){
+           idx = i;
+           v = vi;
+         }
+       }
+   }  
+  }
+	
 
-  // Output the results. A custom HandleOutput function can be implemented
-  // for each supported hardware target.
-  HandleOutput(error_reporter, x, y);
-
+  // End off classification and OK: Red LED
+  if (idx == 1)
+   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
+  else //error
+   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);   
+   
   // Increment the inference_counter, and reset it if we have reached
   // the total number per cycle
   inference_count += 1;

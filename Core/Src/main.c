@@ -104,6 +104,9 @@ int main(void)
   //MX_USB_OTG_FS_PCD_Init();
   /* USER CODE BEGIN 2 */
 
+  // MCU Init end: Green LED
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);   
+  
   /* USER CODE END 2 */
   ai_setup(); 
   /* Infinite loop */
