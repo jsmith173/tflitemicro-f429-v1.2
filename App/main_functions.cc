@@ -12,7 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
-#define USE_FLOAT
+
+//#define USE_FLOAT
 
 #include "main_functions.h"
 #include "main.h"
@@ -28,8 +29,10 @@ limitations under the License.
 
 #ifdef USE_FLOAT
  #include "mnist_model_float_data.h"
+ #define ARENA_SIZE (140*1024)
 #else
  #include "mnist_model_uint8_data.h"
+ #define ARENA_SIZE (32*1024)
 #endif
 
 // Globals, used for compatibility with Arduino-style sketches.
@@ -41,7 +44,7 @@ TfLiteTensor* input = nullptr;
 TfLiteTensor* output = nullptr;
 int inference_count = 0;
 
-constexpr int kTensorArenaSize = 140*1024;
+constexpr int kTensorArenaSize = ARENA_SIZE;
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
@@ -97,6 +100,30 @@ void ai_setup() {
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);   
 }
 
+template <typename T>
+int argmax() 
+{
+  int size = output->bytes; 
+  int div_size = 1;
+  if (output->type == kTfLiteFloat32)
+    div_size = sizeof(float);
+  int num_classes = size/div_size;
+  
+  int idx = 0;
+  T vi, v = 0;
+  for (uint32_t i = 0; i < num_classes; i++) {
+    T* output_data = tflite::GetTensorData<T>(output);
+    for (int i = 0; i < num_classes; i++) {
+      vi = output_data[i];
+      if (vi > v){
+        idx = i;
+        v = vi;
+      }
+    }
+  }
+  return idx;
+}
+
 // The name of this function is important for Arduino compatibility.
 void ai_loop() {
   int tensor_size = input->bytes;
@@ -105,12 +132,23 @@ void ai_loop() {
   int dim_h = input->dims->data[1];
   int dim_w = input->dims->data[2];
   int N = dim_w*dim_h;
+  float* input_data_float=NULL;
+  uint8_t* input_data_uint8=NULL;
   
-  float* input_data = tflite::GetTensorData<float>(input);
+  if (output->type == kTfLiteFloat32)
+   input_data_float = tflite::GetTensorData<float>(input);
+  else
+   input_data_uint8 = tflite::GetTensorData<uint8_t>(input);
 
   // Copy the buffer to input tensor
   for (int i = 0; i < N; i++) {
-    input_data[i] = img_array1[i];
+   if (output->type == kTfLiteFloat32)
+    input_data_float[i] = img_array1[i];
+   else {
+	float x = img_array1[i];
+    uint8_t x_quantized = x / input->params.scale + input->params.zero_point;
+    input_data_uint8[i] = x_quantized;
+   }
   }
 
   // Run inference, and report any error
@@ -121,29 +159,12 @@ void ai_loop() {
   }
 
   // Get output and ArgMax
-  int size = output->bytes; 
-  int div_size = 1;
+  int idx;
   if (output->type == kTfLiteFloat32)
-    div_size = sizeof(float);
-  int num_classes = size/div_size;
+   idx = argmax<float>();
+  else
+   idx = argmax<uint8_t>();
   
-  int idx = 0;
-  float vi, v = 0.0f;
-  unsigned char v_uint8 = 0;
-  for (uint32_t i = 0; i < num_classes; i++) {
-   if (output->type == kTfLiteFloat32) { 
-       float* output_data = tflite::GetTensorData<float>(output);
-       for (int i = 0; i < num_classes; i++) {
-         vi = output_data[i];
-         if (vi > v){
-           idx = i;
-           v = vi;
-         }
-       }
-   }  
-  }
-	
-
   // End off classification and OK: Red LED
   if (idx == 1)
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
