@@ -125,7 +125,7 @@ int argmax()
 }
 
 // The name of this function is important for Arduino compatibility.
-void ai_loop() {
+int ai_loop() {
   int tensor_size = input->bytes;
   int dim_size = input->dims->size;
   int dim_1 = input->dims->data[0];
@@ -134,6 +134,7 @@ void ai_loop() {
   int N = dim_w*dim_h;
   float* input_data_float=NULL;
   uint8_t* input_data_uint8=NULL;
+  int passed;
   
   if (output->type == kTfLiteFloat32)
    input_data_float = tflite::GetTensorData<float>(input);
@@ -155,7 +156,7 @@ void ai_loop() {
   TfLiteStatus invoke_status = interpreter->Invoke();
   if (invoke_status != kTfLiteOk) {
     TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on x: %f\n");
-    return;
+    return -1;
   }
 
   // Get output and ArgMax
@@ -166,13 +167,19 @@ void ai_loop() {
    idx = argmax<uint8_t>();
   
   // End off classification and OK: Red LED
-  if (idx == 1)
+  if (idx == 1) {
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
-  else //error
+   passed = 1;
+  }
+  else { //error
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);   
+   passed = 0;
+  }
    
   // Increment the inference_counter, and reset it if we have reached
   // the total number per cycle
   inference_count += 1;
   if (inference_count >= kInferencesPerCycle) inference_count = 0;
+  
+  return passed;
 }

@@ -102,21 +102,32 @@ int main(void)
   //MX_ETH_Init();
   MX_USART3_UART_Init();
   //MX_USB_OTG_FS_PCD_Init();
+  __disable_irq();
+
   /* USER CODE BEGIN 2 */
 
   // MCU Init end: Green LED
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);   
+
+  int a, passed;
   
   /* USER CODE END 2 */
   ai_setup(); 
   /* Infinite loop */
+  
   /* USER CODE BEGIN WHILE */
+  /* USER CODE END WHILE */
+  passed = ai_loop(); 
+
+  if (passed)
+   a=1;
+  else
+   a=0;
+
+  /* USER CODE BEGIN 3 */
+  
   while (1)
   {
-    /* USER CODE END WHILE */
-    ai_loop(); 
-
-    /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
 }
