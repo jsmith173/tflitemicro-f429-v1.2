@@ -14,6 +14,7 @@ limitations under the License.
 ==============================================================================*/
 
 #include "main_functions.h"
+#include "main.h"
 
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "constants.h"
@@ -79,11 +80,15 @@ void ai_setup() {
   output = interpreter->output(0);
 
   // Keep track of how many inferences we have performed.
-  inference_count = 0;
+  inference_count = 10;
+  
+  // ai_setup end: Blue LED
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);   
+  
 }
 
 // The name of this function is important for Arduino compatibility.
-void ai_loop() {
+int ai_loop() {
   // Calculate an x value to feed into the model. We compare the current
   // inference_count to the number of inferences per cycle to determine
   // our position within the range of possible x values the model was
@@ -91,6 +96,7 @@ void ai_loop() {
   float position = static_cast<float>(inference_count) /
                    static_cast<float>(kInferencesPerCycle);
   float x = position * kXrange;
+  int passed;
 
   // Quantize the input from floating-point to integer
   int8_t x_quantized = x / input->params.scale + input->params.zero_point;
@@ -102,7 +108,7 @@ void ai_loop() {
   if (invoke_status != kTfLiteOk) {
     TF_LITE_REPORT_ERROR(error_reporter, "Invoke failed on x: %f\n",
                          static_cast<double>(x));
-    return;
+    return -1;
   }
 
   // Obtain the quantized output from model's output tensor
@@ -110,12 +116,21 @@ void ai_loop() {
   // Dequantize the output from integer to floating-point
   float y = (y_quantized - output->params.zero_point) * output->params.scale;
 
-  // Output the results. A custom HandleOutput function can be implemented
-  // for each supported hardware target.
-  HandleOutput(error_reporter, x, y);
+  int idx=1;
+  if (y_quantized == 5) {
+   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
+   passed = 1;
+  }
+  else { //error
+   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);   
+   passed = 0;
+  }
+  
 
   // Increment the inference_counter, and reset it if we have reached
   // the total number per cycle
   inference_count += 1;
   if (inference_count >= kInferencesPerCycle) inference_count = 0;
+  
+  return passed;
 }
