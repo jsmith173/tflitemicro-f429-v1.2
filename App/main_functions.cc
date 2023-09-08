@@ -15,6 +15,7 @@ limitations under the License.
 
 #include "main_functions.h"
 #include "main.h"
+#include "constants.h"
 
 #include "tensorflow/lite/micro/all_ops_resolver.h"
 #include "constants.h"
@@ -25,6 +26,8 @@ limitations under the License.
 #include "tensorflow/lite/micro/system_setup.h"
 #include "tensorflow/lite/schema/schema_generated.h"
 
+int inference_count = 0;
+
 // Globals, used for compatibility with Arduino-style sketches.
 namespace {
 tflite::ErrorReporter* error_reporter = nullptr;
@@ -32,7 +35,6 @@ const tflite::Model* model = nullptr;
 tflite::MicroInterpreter* interpreter = nullptr;
 TfLiteTensor* input = nullptr;
 TfLiteTensor* output = nullptr;
-int inference_count = 0;
 
 constexpr int kTensorArenaSize = 40*1024;
 uint8_t tensor_arena[kTensorArenaSize];
@@ -80,7 +82,7 @@ void ai_setup() {
   output = interpreter->output(0);
 
   // Keep track of how many inferences we have performed.
-  inference_count = 10;
+  inference_count = 0;
   
   // ai_setup end: Blue LED
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);   
@@ -116,21 +118,5 @@ int ai_loop() {
   // Dequantize the output from integer to floating-point
   float y = (y_quantized - output->params.zero_point) * output->params.scale;
 
-  int idx=1;
-  if (y_quantized == 5) {
-   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
-   passed = 1;
-  }
-  else { //error
-   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);   
-   passed = 0;
-  }
-  
-
-  // Increment the inference_counter, and reset it if we have reached
-  // the total number per cycle
-  inference_count += 1;
-  if (inference_count >= kInferencesPerCycle) inference_count = 0;
-  
-  return passed;
+  return y_quantized;
 }

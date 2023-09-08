@@ -20,6 +20,9 @@
 #include "main.h"
 #include "string.h"
 
+extern const int kInferencesPerCycle;
+extern int inference_count;
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -104,32 +107,38 @@ int main(void)
   //MX_USB_OTG_FS_PCD_Init();
   __disable_irq();
 
-  /* USER CODE BEGIN 2 */
 
   // MCU Init end: Green LED
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);   
 
-  int a, passed;
+  int i, a, y_quantized;
+  int ai_array[100];
+  const int8_t ai_array_saved[20] = {4, 48, 70, 103, 118, 127, 117, 101, 67, 32, 5, -32, -59, -88, -110, -127, -112, -84, -59, -38};
+
+  for (i=0; i<100; i++) ai_array[i] = 0;
   
-  /* USER CODE END 2 */
   ai_setup(); 
-  /* Infinite loop */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
   
-  /* USER CODE BEGIN WHILE */
-  /* USER CODE END WHILE */
-  passed = ai_loop(); 
-
-  if (passed)
-   a=1;
-  else
-   a=0;
-
-  /* USER CODE BEGIN 3 */
-  
-  while (1)
+  inference_count = 0;
+  while (inference_count < kInferencesPerCycle)
   {
+	y_quantized = ai_loop();
+    if (inference_count < 100)	
+	 ai_array[inference_count] = y_quantized;
+    if (ai_array_saved[inference_count] != y_quantized) {
+     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
+	 break;
+	}	 
+	inference_count++;	
   }
-  /* USER CODE END 3 */
+  
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
+  
+  a=1;
+  a=1;
+
+  while (1) ;
 }
 
 /**
