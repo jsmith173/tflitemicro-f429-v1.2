@@ -124,6 +124,9 @@ int main(void)
   else
    a=0;
 
+  // End program
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);   
+  
   /* USER CODE BEGIN 3 */
   
   while (1)
