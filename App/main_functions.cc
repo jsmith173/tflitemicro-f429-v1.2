@@ -167,7 +167,7 @@ int ai_loop() {
    idx = argmax<uint8_t>();
   
   // End off classification and OK: Red LED
-  if (idx == 1) {
+  if (idx == 5) {
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
    passed = 1;
   }
