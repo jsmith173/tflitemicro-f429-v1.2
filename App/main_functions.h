@@ -28,7 +28,7 @@ void ai_setup();
 // Runs one iteration of data gathering and inference. This should be called
 // repeatedly from the application code. The name needs to be loop() for Arduino
 // compatibility.
-int ai_loop();
+int ai_loop(int current_case);
 
 #ifdef __cplusplus
 }

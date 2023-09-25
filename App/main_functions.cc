@@ -48,6 +48,8 @@ constexpr int kTensorArenaSize = ARENA_SIZE;
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
+const float* p_images[10];
+
 // The name of this function is important for Arduino compatibility.
 void ai_setup() {
   tflite::InitializeTarget();
@@ -96,6 +98,10 @@ void ai_setup() {
   // Keep track of how many inferences we have performed.
   inference_count = 0;
   
+  p_images[0] = img_array0;
+  p_images[1] = img_array1;
+  p_images[2] = img_array2;
+  
   // ai_setup end: Blue LED
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);   
 }
@@ -125,14 +131,14 @@ int argmax()
 }
 
 // The name of this function is important for Arduino compatibility.
-int ai_loop() {
+int ai_loop(int current_case) {
   int tensor_size = input->bytes;
   int dim_size = input->dims->size;
   int dim_1 = input->dims->data[0];
   int dim_h = input->dims->data[1];
   int dim_w = input->dims->data[2];
   int N = dim_w*dim_h;
-  float* input_data_float=NULL;
+  float *input_data_float=NULL, *img_sel;
   uint8_t* input_data_uint8=NULL;
   int passed;
   
@@ -141,12 +147,14 @@ int ai_loop() {
   else
    input_data_uint8 = tflite::GetTensorData<uint8_t>(input);
 
+  img_sel = (float*)p_images[current_case];
+  
   // Copy the buffer to input tensor
   for (int i = 0; i < N; i++) {
    if (output->type == kTfLiteFloat32)
-    input_data_float[i] = img_array1[i];
+    input_data_float[i] = img_sel[i];
    else {
-	float x = img_array1[i];
+	float x = img_sel[i];
     uint8_t x_quantized = x / input->params.scale + input->params.zero_point;
     input_data_uint8[i] = x_quantized;
    }
@@ -167,7 +175,7 @@ int ai_loop() {
    idx = argmax<uint8_t>();
   
   // End off classification and OK: Red LED
-  if (idx == 1) {
+  if (idx == current_case) {
    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
    passed = 1;
   }

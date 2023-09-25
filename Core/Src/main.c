@@ -70,6 +70,7 @@ static void MX_USB_OTG_FS_PCD_Init(void);
 /* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
+#define num_of_all_cases 2
 
 /**
   * @brief  The application entry point.
@@ -117,12 +118,10 @@ int main(void)
   
   /* USER CODE BEGIN WHILE */
   /* USER CODE END WHILE */
-  passed = ai_loop(); 
-
-  if (passed)
-   a=1;
-  else
-   a=0;
+  for (int i=1; i<num_of_all_cases; i++) {
+   passed = ai_loop(i);
+   if (!passed) break;
+  }
 
   // End program
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);   
