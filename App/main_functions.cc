@@ -101,6 +101,13 @@ void ai_setup() {
   p_images[0] = img_array0;
   p_images[1] = img_array1;
   p_images[2] = img_array2;
+  p_images[3] = img_array3;
+  p_images[4] = img_array4;
+  p_images[5] = img_array5;
+  p_images[6] = img_array6;
+  p_images[7] = img_array7;
+  p_images[8] = img_array8;
+  p_images[9] = img_array9;
   
   // ai_setup end: Blue LED
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_7, GPIO_PIN_SET);   
@@ -129,6 +136,8 @@ int argmax()
   }
   return idx;
 }
+
+int ai_result[32];
 
 // The name of this function is important for Arduino compatibility.
 int ai_loop(int current_case) {
@@ -174,20 +183,10 @@ int ai_loop(int current_case) {
   else
    idx = argmax<uint8_t>();
   
-  // End off classification and OK: Red LED
-  if (idx == current_case) {
-   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_SET);   
-   passed = 1;
-  }
-  else { //error
-   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);   
-   passed = 0;
-  }
-   
   // Increment the inference_counter, and reset it if we have reached
   // the total number per cycle
   inference_count += 1;
   if (inference_count >= kInferencesPerCycle) inference_count = 0;
   
-  return passed;
+  return idx;
 }
