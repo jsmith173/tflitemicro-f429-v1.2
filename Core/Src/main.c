@@ -20,8 +20,6 @@
 #include "main.h"
 #include "string.h"
 
-#define ENABLE_SPECIFIC_CONV
-
 ETH_TxPacketConfig TxConfig;
 ETH_DMADescTypeDef  DMARxDscrTab[ETH_RX_DESC_CNT]; /* Ethernet Rx DMA Descriptors */
 ETH_DMADescTypeDef  DMATxDscrTab[ETH_TX_DESC_CNT]; /* Ethernet Tx DMA Descriptors */
@@ -100,17 +98,9 @@ int main(void)
   /* USER CODE END WHILE */
   passed = 1;
   
-  #ifdef ENABLE_SPECIFIC_CONV
-  current_case = 1;
+  current_case = 0;
   result = ai_loop(current_case);
   if (current_case != result) passed = 0;
-  #else
-  for (int i=0; i<num_of_all_cases; i++) {
-   result = ai_loop(i);
-   ai_result[i] = result;
-   if (i != result) passed = 0;
-  }
-  #endif
 
   // End off classification and OK: Red LED
   if (passed) {
