@@ -90,7 +90,7 @@ int main(void)
   // MCU Init end: Green LED
   HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_SET);   
 
-  int a, current_case, passed, result, ai_result[32];  
+  volatile int a, current_case, passed, result, ai_result[32];  
   
   /* USER CODE END 2 */
   ai_setup(); 
@@ -103,6 +103,9 @@ int main(void)
   #ifdef ENABLE_SPECIFIC_CONV
   current_case = 1;
   result = ai_loop(current_case);
+  
+  a=result;
+  
   if (current_case != result) passed = 0;
   #else
   for (int i=0; i<num_of_all_cases; i++) {

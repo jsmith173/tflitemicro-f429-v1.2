@@ -48,7 +48,7 @@ constexpr int kTensorArenaSize = ARENA_SIZE;
 uint8_t tensor_arena[kTensorArenaSize];
 }  // namespace
 
-const float* p_images[10];
+const uint8_t* p_images[10];
 
 // The name of this function is important for Arduino compatibility.
 void ai_setup() {
@@ -147,8 +147,8 @@ int ai_loop(int current_case) {
   int dim_h = input->dims->data[1];
   int dim_w = input->dims->data[2];
   int N = dim_w*dim_h;
-  float *input_data_float=NULL, *img_sel;
-  uint8_t* input_data_uint8=NULL;
+  float *input_data_float=NULL;
+  uint8_t *input_data_uint8=NULL, *img_sel;
   int passed;
   
   if (output->type == kTfLiteFloat32)
@@ -156,15 +156,14 @@ int ai_loop(int current_case) {
   else
    input_data_uint8 = tflite::GetTensorData<uint8_t>(input);
 
-  img_sel = (float*)p_images[current_case];
+  img_sel = (uint8_t*)p_images[current_case];
   
   // Copy the buffer to input tensor
   for (int i = 0; i < N; i++) {
    if (output->type == kTfLiteFloat32)
     input_data_float[i] = img_sel[i];
    else {
-	float x = img_sel[i];
-    uint8_t x_quantized = x / input->params.scale + input->params.zero_point;
+	uint8_t x_quantized = img_sel[i];
     input_data_uint8[i] = x_quantized;
    }
   }
